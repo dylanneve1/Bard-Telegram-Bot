@@ -275,21 +275,13 @@ async def change_cutoff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_strs = [
         "Welcome to <b>Bard Telegram Bot</b>",
-        "I am a conversational AI powered by LaMDA",
+        "I am a conversational AI powered by PaLM",
         "Commands:",
-        "• /id to get your chat identifier",
         "• /reset to reset the chat history",
         "• /retry to regenerate the answer",
     ]
     print(f"[i] {update.effective_user.username} started the bot")
     await update.message.reply_text("\n".join(welcome_strs), parse_mode=ParseMode.HTML)
-
-
-async def send_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        f"Your chat identifier is `{update.effective_chat.id}`, send it to the bot admin to get access\\.",
-        parse_mode=ParseMode.MARKDOWN_V2,
-    )
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -321,7 +313,6 @@ def run_bot():
     msg_filter = filters.TEXT
 
     handler_list = [
-        CommandHandler("id", send_id),
         CommandHandler("start", start_bot),
         CommandHandler("help", start_bot),
         CommandHandler("reset", reset_chat, user_filter),
