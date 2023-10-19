@@ -223,60 +223,6 @@ async def recv_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
                 await update.message.reply_text(images, parse_mode=ParseMode.HTML)
 
-
-async def show_settings(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    mode, session = get_session(update, context)
-
-    infos = [
-        f"Mode: <b>{mode}</b>",
-    ]
-    extras = []
-    if mode == "Claude":
-        extras = [
-            f"Model: <b>{session.model}</b>",
-            f"Temperature: <b>{session.temperature}</b>",
-            f"Cutoff: <b>{session.cutoff}</b>",
-            "",
-            "Commands:",
-            "• /mode to use Google Bard",
-            "• [/model NAME] to change model",
-            "• [/temp VALUE] to set temperature",
-            "• [/cutoff VALUE] to adjust cutoff",
-            "<a href='https://docs.anthropic.com/claude/reference/complete_post'>Reference</a>",
-        ]
-    else:  # Bard
-        extras = [
-            "",
-            "Commands:",
-            "• /mode to use Anthropic Claude",
-        ]
-    infos.extend(extras)
-    await update.message.reply_text("\n".join(infos), parse_mode=ParseMode.HTML)
-
-
-async def change_mode(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if single_mode:
-        return await update.message.reply_text(f"❌ You cannot access the other mode.")
-    mode, _ = get_session(update, context)
-
-    final_mode, emoji = ("Bard", "🟠") if mode == "Claude" else ("Claude", "🟣")
-    context.chat_data["mode"] = final_mode
-    if final_mode not in context.chat_data:
-        context.chat_data[final_mode] = {"session": Session(final_mode)}
-    await update.message.reply_text(
-        f"{emoji} Mode has been switched to <b>{final_mode}</b>.",
-        parse_mode=ParseMode.HTML,
-    )
-
-    last_msg_id = context.chat_data[final_mode].get("last_msg_id")
-    if last_msg_id is not None:
-        await update.message.reply_text(
-            f"☝️ <b>{final_mode}</b>'s last answer. /reset",
-            reply_to_message_id=last_msg_id,
-            parse_mode=ParseMode.HTML,
-        )
-
-
 async def change_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode, session = get_session(update, context)
 
@@ -328,15 +274,12 @@ async def change_cutoff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_strs = [
-        "Welcome to <b>Claude & Bard Telegram Bot</b>",
-        "",
+        "Welcome to <b>Bard Telegram Bot</b>",
+        "I am a conversational AI powered by LaMDA",
         "Commands:",
         "• /id to get your chat identifier",
         "• /reset to reset the chat history",
         "• /retry to regenerate the answer",
-        "• /seg to send message in segments",
-        "• /mode to switch between Claude & Bard",
-        "• /settings to show Claude & Bard settings",
     ]
     print(f"[i] {update.effective_user.username} started the bot")
     await update.message.reply_text("\n".join(welcome_strs), parse_mode=ParseMode.HTML)
@@ -359,9 +302,6 @@ async def post_init(application: Application):
         [
             BotCommand("/reset", "Reset the chat history"),
             BotCommand("/retry", "Regenerate the answer"),
-            BotCommand("/seg", "Send message in segments"),
-            BotCommand("/mode", "Switch between Claude & Bard"),
-            BotCommand("/settings", "Show Claude & Bard settings"),
             BotCommand("/help", "Get help message"),
         ]
     )
@@ -385,8 +325,6 @@ def run_bot():
         CommandHandler("start", start_bot),
         CommandHandler("help", start_bot),
         CommandHandler("reset", reset_chat, user_filter),
-        CommandHandler("settings", show_settings, user_filter),
-        CommandHandler("mode", change_mode, user_filter),
         CommandHandler("model", change_model, user_filter),
         CommandHandler("temp", change_temperature, user_filter),
         CommandHandler("cutoff", change_cutoff, user_filter),
