@@ -19,7 +19,7 @@ from telegram.ext import (
     filters,
 )
 
-from config import bot_token, default_mode, single_mode, user_ids
+from config import bot_token, default_mode, single_mode, user_ids, psid, psidts, cfg_boot_time
 from utils import Session
 
 
@@ -275,13 +275,29 @@ async def change_cutoff(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def start_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_strs = [
         "Welcome to <b>Bard Telegram Bot</b>",
-        "I am a conversational AI powered by PaLM",
+        "I am a conversational AI powered by PaLM 2",
         "Commands:",
         "• /reset to reset the chat history",
+        "• /info to get info about the bot",
         "• /retry to regenerate the answer",
     ]
     print(f"[i] {update.effective_user.username} started the bot")
     await update.message.reply_text("\n".join(welcome_strs), parse_mode=ParseMode.HTML)
+
+
+async def bot_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    info_strs = [
+        "<b>Bard Telegram Bot Info:</b>",
+        " ",
+        f"Info requested by {update.effective_user.username}",
+        " ",
+        f"Bot started at {cfg_boot_time}",
+        " ",
+        f"<b>1PSID:</b> {psid}",
+        f"<b>1PSIDTS:</b> {psidts}",
+    ]
+    print(f"[i] {update.effective_user.username} requested info for the bot")
+    await update.message.reply_text("\n".join(info_strs), parse_mode=ParseMode.HTML)
 
 
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -293,6 +309,7 @@ async def post_init(application: Application):
     await application.bot.set_my_commands(
         [
             BotCommand("/reset", "Reset the chat history"),
+            BotCommand("/info", "Get bot info"),
             BotCommand("/retry", "Regenerate the answer"),
             BotCommand("/help", "Get help message"),
         ]
@@ -300,7 +317,7 @@ async def post_init(application: Application):
 
 
 def run_bot():
-    print(f"[+] bot started, calling loop!")
+    print(f"[+] bot started at {cfg_boot_time}, calling loop!")
     application = (
         ApplicationBuilder()
         .token(bot_token)
@@ -315,6 +332,7 @@ def run_bot():
     handler_list = [
         CommandHandler("start", start_bot),
         CommandHandler("help", start_bot),
+        CommandHandler("info", bot_info),
         CommandHandler("reset", reset_chat, user_filter),
         CommandHandler("model", change_model, user_filter),
         CommandHandler("temp", change_temperature, user_filter),

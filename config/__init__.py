@@ -1,3 +1,4 @@
+import datetime
 from os import getenv, path
 
 from yaml import safe_load
@@ -29,6 +30,9 @@ if bard_api is not None:
     psid, psidts = bard_api[0].strip(), bard_api[1].strip()
 else:
     psid, psidts = None, None
+
+# Boot time of bot
+cfg_boot_time = datetime.datetime.now()
 
 single_mode = claude_api is None or bard_api is None
 default_mode = "Claude" if claude_api is not None else "Bard"
