@@ -48,8 +48,8 @@ async def view_other_drafts(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if last_msg_id is not None and update.callback_query.data == f"{last_msg_id}":
         # increase choice index
         context.chat_data["Bard"]["drafts"]["index"] = (
-            context.chat_data["Bard"]["drafts"]["index"] + 1
-        ) % len(context.chat_data["Bard"]["drafts"]["choices"])
+                                                               context.chat_data["Bard"]["drafts"]["index"] + 1
+                                                       ) % len(context.chat_data["Bard"]["drafts"]["choices"])
         await bard_response(update, context)
 
 
@@ -89,13 +89,13 @@ async def recv_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
     input_text = update.message.text
     if update.message.chat.type != "private":
         if (
-            update.message.reply_to_message
-            and update.message.reply_to_message.from_user.username
-            == context.bot.username
+                update.message.reply_to_message
+                and update.message.reply_to_message.from_user.username
+                == context.bot.username
         ):
             pass
         elif update.message.entities is not None and input_text.startswith(
-            f"@{context.bot.username}"
+                f"@{context.bot.username}"
         ):
             input_text = input_text.lstrip(f"@{context.bot.username}").lstrip()
         else:
@@ -171,7 +171,7 @@ async def recv_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if item[2][0] != ""
             )
             sources = "\n\nSources\n" + "\n".join(
-                [f"{i+1}. {val}" for i, val in enumerate(links)]
+                [f"{i + 1}. {val}" for i, val in enumerate(links)]
             )
 
         # Buttons
@@ -222,6 +222,7 @@ async def recv_msg(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     ]
                 )
                 await update.message.reply_text(images, parse_mode=ParseMode.HTML)
+
 
 async def change_model(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mode, session = get_session(update, context)
@@ -278,6 +279,7 @@ async def start_bot(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "I am a conversational AI powered by PaLM 2",
         "Commands:",
         "• /reset to reset the chat history",
+        "• /ask to ask a question",
         "• /info to get info about the bot",
         "• /retry to regenerate the answer",
     ]
@@ -300,6 +302,80 @@ async def bot_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("\n".join(info_strs), parse_mode=ParseMode.HTML)
 
 
+async def ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    input_text = update.message.text
+    input_text = input_text.lstrip("/ask").lstrip()
+    if input_text == "":
+        return await update.message.reply_text("❌ Empty question.")
+
+    mode, session = get_session(update, context)
+
+    message = await update.message.reply_text("Thinking...")
+
+    response = await session.send_message(input_text)
+
+    # get source links
+    sources = ""
+    if response["factualityQueries"]:
+        links = set(
+            item[2][0].split("//")[-1]
+            for item in response["factualityQueries"][0]
+            if item[2][0] != ""
+        )
+        sources = "\n\nSources\n" + "\n".join(
+            [f"{i + 1}. {val}" for i, val in enumerate(links)]
+        )
+
+    # Buttons
+    search_url = (
+        quote(response["textQuery"][0])
+        if response["textQuery"] != ""
+        else quote(input_text)
+    )
+    search_url = f"https://www.google.com/search?q={search_url}"
+    markup = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    text="📝 View other drafts",
+                    callback_data=f"{message.message_id}",
+                ),
+                InlineKeyboardButton(text="🔍 Google it", url=search_url),
+            ]
+        ]
+    )
+    context.chat_data["Bard"]["drafts"] = {
+        "message": message,
+        "markup": markup,
+        "sources": sources,
+        "choices": response["choices"],
+        "index": 0,
+    }
+    # get response
+    await bard_response(update, context)
+    # get images
+    if len(response["images"]) != 0:
+        captions = [
+            caption[1:-1]
+            for caption in response["content"].splitlines()
+            if caption.startswith("[Image")
+        ]
+        try:
+            images = [
+                InputMediaPhoto(media=image, caption=captions[i])
+                for i, image in enumerate(response["images"])
+            ]
+            await update.message.reply_media_group(images)
+        except:
+            images = "\n".join(
+                [
+                    f"<a href='{image}'>{captions[i]}</a>"
+                    for i, image in enumerate(response["images"])
+                ]
+            )
+            await update.message.reply_text(images, parse_mode=ParseMode.HTML)
+
+
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print(f"[e] {context.error}")
     await update.message.reply_text(f"❌ Error orrurred: {context.error}. /reset")
@@ -309,6 +385,7 @@ async def post_init(application: Application):
     await application.bot.set_my_commands(
         [
             BotCommand("/reset", "Reset the chat history"),
+            BotCommand("/ask", "Ask a question"),
             BotCommand("/info", "Get bot info"),
             BotCommand("/retry", "Regenerate the answer"),
             BotCommand("/help", "Get help message"),
@@ -332,6 +409,7 @@ def run_bot():
     handler_list = [
         CommandHandler("start", start_bot),
         CommandHandler("help", start_bot),
+        CommandHandler("ask", ask_question),
         CommandHandler("info", bot_info),
         CommandHandler("reset", reset_chat, user_filter),
         CommandHandler("model", change_model, user_filter),
